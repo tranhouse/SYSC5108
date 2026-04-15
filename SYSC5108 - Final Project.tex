@@ -44,29 +44,12 @@
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-This report presents the development and evaluation of three deep learning models for
-land use and land cover (LULC) classification from satellite imagery using the EuroSAT
-benchmark dataset. The work is motivated by satellite-based ghost gear detection efforts
-at Fisheries and Oceans Canada (DFO), where proprietary operational data cannot be used
-in an academic setting. EuroSAT, derived from Sentinel-2 imagery provided by the
-European Space Agency, serves as the public proxy dataset for developing and validating
-the proposed methods.
+Ghost gear are abandoned, lost, or discarded fishing equipment and is a persistent problem in Canada's marine environments. Fisheries and Oceans Canada (DFO) holds satellite imagery relevant to ghost gear monitoring, but this data is restricted from academic use. EuroSAT, a publicly available satellite imagery dataset derived from the same Sentinel-2 sensor platform, was used as a stand-in to develop and test deep learning classification methods that could eventually be applied to DFO's operational data.
 
-Three models are trained and evaluated on a stratified 70/15/15 train/validation/test
-split of the 27,000-image, 10-class dataset: a Baseline CNN trained from scratch
-achieving 93.26\% test accuracy, a ResNet50 with two-phase ImageNet transfer learning
-achieving 97.51\%, and a Vision Transformer ViT-B/16 with ImageNet-21k transfer learning
-achieving 98.77\%. The ViT-B/16 outperforms both convolutional baselines and exceeds the
-original EuroSAT benchmark of 98.57\% reported by Helber et al.\ using ResNet50.
+Three models were trained on EuroSAT's 27,000 labelled image patches across 10 land cover classes, split 70/15/15 into training, validation, and test sets. The Baseline CNN, trained from scratch, reached 93.26\% test accuracy. ResNet50, fine-tuned from ImageNet weights using a two-phase strategy, reached 97.51\%. ViT-B/16, a Vision Transformer pre-trained on ImageNet-21k, reached 98.77\%, narrowly exceeding the original EuroSAT benchmark of 98.57\% reported by Helber et al.
 
-Confusion matrix analysis reveals that vegetation-type classes --- particularly
-Permanent Crop, Herbaceous Vegetation, and Pasture --- present the greatest
-classification difficulty across all models, accounting for the majority of
-misclassifications. River confusion with Highway was also identified as a persistent
-and unexpected error pattern. Results confirm that transfer learning provides a
-a clear improvement over training from scratch, and that attention-based Transformer
-architectures outperform convolutional models for satellite scene classification when
-sufficiently pre-trained.
+The biggest source of error across all three models was the vegetation group.
+Permanent Crop, Herbaceous Vegetation, and Pasture are difficult to separate at the dataset's native $64 \times 64$ pixel resolution in RGB, and confusion between them accounts for the majority of misclassifications. River patches being predicted as Highway was a less expected but recurring error, largely corrected by the two pre-trained models. Forest, Industrial, Sea/Lake, and Residential were consistently the easiest classes across all models.
 
 \newpage
 
@@ -117,7 +100,7 @@ sufficiently pre-trained.
     $\eta$              & Learning rate \\
     $\lambda$           & Weight decay coefficient \\
     $\nabla \mathcal{L}$& Gradient of the loss function \\
-    $\mu$               & Mean (batch normalisation or channel statistics) \\
+    $\mu$               & Mean (batch normalization or channel statistics) \\
     $\sigma$            & Standard deviation \\
     $\epsilon$          & Small constant for numerical stability \\
     $\gamma, \beta$     & Learnable scale and shift parameters (batch normalisation) \\
@@ -145,78 +128,43 @@ sufficiently pre-trained.
 
 \subsection{Motivation}
 
-Fisheries and Oceans Canada (DFO) is the federal department responsible for managing and
-protecting Canada's marine and freshwater resources. Among its ongoing mandates is the
-detection and removal of ghost gear --- abandoned, lost, or discarded fishing equipment
-that poses significant ecological risks to marine habitats and species.
+As a public servant employee at Fisheries and Oceans Canada (DFO), we are responsible for supporting the management and protection of Canada's marine and freshwater resources. Among its ongoing mandates is the detection and removal of ghost gear, which are abandoned, lost, or discarded fishing equipment that poses significant ecological risks to marine habitats and species.
 
 \subsubsection*{The Ghost Gear Problem}
 
-Ghost gear is widely recognised as the deadliest form of marine plastic debris.
+Ghost gear is widely recognized as the deadliest form of marine plastic debris.
 Between 600,000 and 800,000 metric tonnes of ghost gear enter the world's oceans
-annually \cite{canadiangeographic2021}, and ghost gear accounts for approximately
-70\% of all macro-plastics in the ocean by weight \cite{ifaw2022}. Once lost, gear
-continues to fish indefinitely in a destructive cycle: lost traps and nets retain
-bait that attracts marine species, which become entrapped and in turn attract further
-species, repeating until the gear degrades or is retrieved. Animals caught in ghost
-gear frequently die through suffocation or exhaustion. Ghost gear also damages
-critical marine habitats including coral reefs and mangroves, and poses hazards to
-navigation.
+annually \cite{canadiangeographic2021}, and ghost gear accounts for approximately 70\% of all macro-plastics in the ocean by weight \cite{ifaw2022}. Once lost, gear continues to fish indefinitely in a destructive cycle: lost traps and nets retain bait that attracts marine species, which become entrapped and in turn attract further species, repeating until the gear degrades or is retrieved. Animals caught in ghost gear frequently die through suffocation or exhaustion. Ghost gear also damages critical marine habitats including coral reefs and mangroves, and poses hazards to navigation.
 
 The economic consequences are equally significant. Approximately 90\% of species
 caught in ghost gear are of commercial value \cite{ifaw2022}. A 2021 study found
-that lobster traps lost in Southwest Nova Scotia alone cost harvesters \$175,000 in
-annual harvest \cite{canadiangeographic2021}. The cost of traditional mapping efforts
-to locate ghost gear in three areas of the Canadian Arctic was estimated at \$635,000
-for a single operation \cite{dfopsdc2023}. An AI-based approach, by comparison, has
-been estimated to cost at most \$500,000 annually for year-round regional-scale
-monitoring, while providing more comprehensive and timely coverage.
+that lobster traps lost in Southwest Nova Scotia alone cost harvesters \$175,000 in annual harvest \cite{canadiangeographic2021}. The cost of traditional mapping efforts to locate ghost gear in three areas of the Canadian Arctic was estimated at \$635,000 for a single operation \cite{dfopsdc2023}. An AI-based approach, by comparison, has been estimated to cost at most \$500,000 annually for year-round regional-scale monitoring, while providing more comprehensive and timely coverage.
 
 \subsubsection*{Canada's Policy Context}
 
 Canada has committed to recovering 100\% of all plastics by 2040 and has taken
-concrete steps toward this goal through the Oceans Protection Plan, Ocean Plastics
-Charter, Ghost Gear Fund, and Blue Economy Strategy \cite{dfopsdc2023}. The Ghost
-Gear Fund supports harvesters and communities in retrieving lost gear and returning
-it to the circular economy. Extreme weather events such as Hurricane Fiona have
-further increased the rate of gear loss, adding urgency to these efforts.
+concrete steps toward this goal through the Oceans Protection Plan, Ocean Plastics Charter, Ghost Gear Fund, and Blue Economy Strategy \cite{dfopsdc2023}. The Ghost Gear Fund supports harvesters and communities in retrieving lost gear and returning it to the circular economy. Extreme weather events such as Hurricane Fiona have further increased the rate of gear loss, adding urgency to these efforts.
 
-DFO has identified AI-assisted satellite imagery analysis as a key tool for mapping
-ghost gear at operational scale. In 2023, DFO submitted a Results Fund Proposal in
-partnership with the Ghost Gear Program to pilot AI solutions for detecting marine
-litter and predicting gear accumulation densities \cite{dfopsdc2023}. Marina Petrovic,
-Assistant Director of Fisheries Resource Management at DFO, noted that Canada is
-in a position to build on existing gear-loss datasets by incorporating AI to model
-potential areas of gear accumulation and to assist in interpreting sonar mapping
-data, which would allow retrieval efforts to be directed toward areas of highest
-accumulation or greatest ecological sensitivity \cite{dfopsdc2023}.
+DFO has identified AI-assisted satellite imagery analysis as a key tool for mapping ghost gear at operational scale. In 2023, DFO submitted a Results Fund Proposal in partnership with the Ghost Gear Program to pilot AI solutions for detecting marine litter and predicting gear accumulation densities \cite{dfopsdc2023}. Marina Petrovic, Assistant Director of Fisheries Resource Management at DFO, noted that Canada is in a position to build on existing gear-loss datasets by incorporating AI to model potential areas of gear accumulation and to assist in interpreting sonar mapping data, which would allow retrieval efforts to be directed toward areas of highest accumulation or greatest ecological sensitivity \cite{dfopsdc2023}.
 
 \subsubsection*{Scope of This Project}
 
-DFO currently holds proprietary satellite datasets relevant to this monitoring task;
-however, this data is subject to confidentiality restrictions that prevent its use in
-an academic project. To develop and validate deep learning classification methods
-applicable to satellite imagery, this project uses EuroSAT \cite{helber2019eurosat},
-a publicly available benchmark derived from Sentinel-2 imagery provided by the European
-Space Agency (ESA). EuroSAT provides a well-established testbed of 27,000 labelled
-satellite image patches across 10 land use and land cover classes. The underlying
-task --- classifying satellite image patches into distinct categories using deep
-learning --- applies to the scene-level analysis required for ghost gear detection.
+DFO currently holds proprietary satellite datasets relevant to this monitoring task; however, this data is subject to confidentiality restrictions that prevent its use in an academic project. To develop and validate deep learning classification methods applicable to satellite imagery, this project uses EuroSAT \cite{helber2019eurosat}, a publicly available benchmark derived from Sentinel-2 imagery provided by the European Space Agency (ESA). EuroSAT provides a well-established testbed of 27,000 labelled
+satellite image patches across 10 land use and land cover classes. The underlying task is to classify satellite image patches into distinct categories using deep learning, which applies to the scene-level analysis required for ghost gear detection.
 Methods validated here can serve as a basis for future application to DFO's
 restricted operational data.
 
 \subsection{Objectives}
 
-This project trains and evaluates three deep learning models for LULC classification
-on EuroSAT:
+This project trains and evaluates three deep learning models for Land Use and Land Cover (LULC) classification on EuroSAT:
 
 \begin{enumerate}
-    \item \textbf{Baseline CNN} --- a compact convolutional network trained from
+    \item \textbf{Baseline CNN}: A compact convolutional network trained from
           scratch, establishing a lower-bound reference.
-    \item \textbf{ResNet50 with Transfer Learning} --- a 50-layer residual network
+    \item \textbf{ResNet50 with Transfer Learning}: A 50-layer residual network
           pre-trained on ImageNet \cite{he2016resnet}, fine-tuned using a two-phase
           strategy.
-    \item \textbf{Vision Transformer ViT-B/16 with Transfer Learning} --- a
+    \item \textbf{Vision Transformer ViT-B/16 with Transfer Learning}: A
           Transformer-based architecture pre-trained on ImageNet-21k
           \cite{dosovitskiy2021vit}, fine-tuned on EuroSAT.
 \end{enumerate}
@@ -252,13 +200,11 @@ function. The most common modern activation function is the Rectified Linear Uni
 \end{equation}
 
 Training adjusts weight values by propagating prediction errors backwards through the
-network --- a process known as backpropagation --- to minimise a loss function.
+network, a process known as backpropagation, to minimise a loss function.
 
 \subsubsection{Convolutional Neural Networks}
 
-A Convolutional Neural Network (CNN) applies learnable filters across the input using
-a sliding window, producing feature maps that detect local spatial patterns. Batch
-normalisation \cite{ioffe2015batch} is applied after convolution to stabilise training:
+A Convolutional Neural Network (CNN) applies learnable filters across the input using a sliding window, producing feature maps that detect local spatial patterns. Batch normalization \cite{ioffe2015batch} is applied after convolution to stabilize training:
 
 \begin{equation}
     \hat{h} = \frac{h - \mu_{\text{batch}}}{\sqrt{\sigma_{\text{batch}}^2 + \epsilon}},
@@ -267,9 +213,7 @@ normalisation \cite{ioffe2015batch} is applied after convolution to stabilise tr
     \label{eq:bn}
 \end{equation}
 
-A max pooling operation follows to reduce spatial dimensions and provide translation
-invariance. Deep CNNs stack many such layers, building increasingly abstract feature
-representations from low-level edges to complex class-specific patterns.
+A max pooling operation follows to reduce spatial dimensions and provide translation invariance. Deep CNNs stack many such layers, building increasingly abstract feature representations from low-level edges to complex class-specific patterns.
 
 \subsubsection{Residual Networks}
 
@@ -282,14 +226,11 @@ Training very deep CNNs is hindered by the vanishing gradient problem. ResNets
 \end{equation}
 
 where $\mathcal{F}$ is the residual mapping and $\mathbf{x}$ is the identity shortcut.
-This gives a direct gradient path during backpropagation, allowing stable training
-of networks with tens to hundreds of layers.
+This gives a direct gradient path during backpropagation, allowing stable training of networks with tens to hundreds of layers.
 
 \subsubsection{Vision Transformers}
 
-The Vision Transformer (ViT) \cite{dosovitskiy2021vit} reframes image classification
-as a sequence modelling problem. An input image is partitioned into $N = HW/P^2$
-non-overlapping patches, each linearly projected into a $D$-dimensional embedding.
+The Vision Transformer (ViT) \cite{dosovitskiy2021vit} reframes image classification as a sequence modelling problem. An input image is partitioned into $N = HW/P^2$ non-overlapping patches, each linearly projected into a $D$-dimensional embedding.
 A learnable class token is prepended and positional embeddings are added:
 
 \begin{equation}
@@ -309,20 +250,13 @@ Self-Attention:
 \end{equation}
 
 The final class token representation is passed to a linear classification head.
-Unlike CNNs, self-attention operates globally from the first layer, allowing the model
-to reason about relationships between any two image patches regardless of spatial
-distance.
+Unlike CNNs, self-attention operates globally from the first layer, allowing the model to reason about relationships between any two image patches regardless of spatial distance.
 
 \subsubsection{Transfer Learning}
 
-Transfer learning initialises a model with weights learned on a large source dataset
-and fine-tunes on the smaller target dataset. The pre-trained weights encode general
-visual features that transfer across domains, reducing the amount of target-domain
-data and training time required. Yosinski et al.\ \cite{yosinski2014transferable}
+Transfer learning initialises a model with weights learned on a large source dataset and fine-tunes on the smaller target dataset. The pre-trained weights encode general visual features that transfer across domains, reducing the amount of target-domain data and training time required. Yosinski et al.\ \cite{yosinski2014transferable}
 showed that lower network layers learn highly transferable features while
-upper layers are more task-specific and benefit most from fine-tuning. This motivates
-the standard practice of replacing the final classification layer for the target
-number of classes and fine-tuning the network on the new dataset.
+upper layers are more task-specific and benefit most from fine-tuning. This motivates the standard practice of replacing the final classification layer for the target number of classes and fine-tuning the network on the new dataset.
 
 \subsubsection{Cross-Entropy Loss}
 
@@ -339,49 +273,29 @@ $\hat{p}_k^{(i)}$ is the predicted probability for class $k$.
 
 \subsection{Related Work}
 
-Helber et al.\ \cite{helber2019eurosat} introduced EuroSAT and established a benchmark
-of 98.57\% accuracy using ResNet50, showing that ImageNet pre-trained CNNs
-transfer well to satellite imagery despite the domain shift from natural images.
-Marmanis et al.\ \cite{marmanis2016deep} applied ImageNet-pre-trained CNN features to
-aerial scene classification and showed accuracy gains over models trained
-from scratch. Cheng et al.\ \cite{cheng2017remote} confirmed this across multiple remote
-sensing benchmarks, establishing transfer learning as the standard approach for satellite
-image classification with limited labelled data.
+The application of transfer learning to fine-tune a deep learning model on DFO ghost gear data has not been previously explored by other data science teams within the department; this would be the first to the author's knowledge. However, we can see that Helber et al.\ \cite{helber2019eurosat} introduced EuroSAT and established a benchmark of 98.57\% accuracy using ResNet50, showing that ImageNet pre-trained CNNs transfer well to satellite imagery despite the domain shift from natural images. 
+Marmanis et al.\ \cite{marmanis2016deep} applied ImageNet-pre-trained CNN features to aerial scene classification and showed accuracy gains over models trained from scratch. Cheng et al.\ \cite{cheng2017remote} confirmed this across multiple remote sensing benchmarks, establishing transfer learning as the standard approach for satellite image classification with limited labelled data.
 
 More recently, Vision Transformers have been applied to remote sensing tasks.
-Dosovitskiy et al.\ \cite{dosovitskiy2021vit} showed that ViT models pre-trained on
-large datasets achieve strong performance on image classification benchmarks, with
-performance generally matching or exceeding CNNs when sufficient pre-training data is
-available.
+Dosovitskiy et al.\ \cite{dosovitskiy2021vit} showed that ViT models pre-trained on large datasets achieve strong performance on image classification benchmarks, with performance generally matching or exceeding CNNs when sufficient pre-training data is available. 
 
 \subsection{Rationale for Chosen Methods}
 
 \subsubsection{Why Deep Learning?}
 
-Satellite images are high-dimensional data with complex spatial relationships that
-traditional machine learning approaches with hand-crafted features cannot capture
-reliably. Deep learning models learn hierarchical feature representations directly
-from raw pixels, giving better accuracy and generalisation across diverse land
-cover types.
+Satellite images are high-dimensional data with complex spatial relationships that traditional machine learning approaches with hand-crafted features cannot capture reliably. Deep learning models learn hierarchical feature representations directly from raw pixels, giving better accuracy and generalisation across diverse land cover types.
 
 \subsubsection{Why These Three Architectures?}
 
 The three models are chosen to form a structured comparison. The Baseline CNN
-establishes what is achievable from EuroSAT alone. ResNet50 represents the established
-CNN-based transfer learning approach and provides a direct comparison with the Helber
-et al.\ benchmark. ViT-B/16 tests whether global attention-based reasoning provides
-advantages over local convolutional feature extraction for satellite scene
-classification, where class identity often depends on spatial layout across the whole
-image rather than any single local region.
+establishes what is achievable from EuroSAT alone. ResNet50 represents the established CNN-based transfer learning approach and provides a direct comparison with the Helber et al.\ benchmark. ViT-B/16 tests whether global attention-based reasoning provides advantages over local convolutional feature extraction for satellite scene classification, where class identity often depends on spatial layout across the whole image rather than any single local region.
 
 % ════════════════════════════════════════════════════════════════════════════
 \section{System Description}
 
 \subsection{Dataset Description}
 
-The EuroSAT dataset \cite{helber2019eurosat} is derived from Sentinel-2 satellite
-imagery provided by the ESA. It contains 27,000 labelled $64 \times 64$ pixel RGB
-image patches across 10 LULC classes, available at
+The EuroSAT dataset \cite{helber2019eurosat} is derived from Sentinel-2 satellite imagery provided by the ESA. It contains 27,000 labelled $64 \times 64$ pixel RGB image patches across 10 LULC classes, available at
 \url{https://zenodo.org/records/7711810}.
 
 \begin{table}[h!]
@@ -427,21 +341,11 @@ Stratification ensures each class is proportionally represented in all three sub
     \end{tabular}
 \end{table}
 
-$k$-fold cross-validation was considered but not used for this project. First, three
-architecturally distinct models are trained; with $k = 5$, that requires 15 separate
-training runs, which is computationally prohibitive given the cost of fine-tuning
-ViT-B/16. Second, EuroSAT contains 27,000 images with 2,000--3,000 samples per class,
-a scale at which a single stratified split produces a test set of over 4,000 samples
-that is already statistically stable --- the reduction in variance from $k$-fold is
-minimal at this dataset size.
+$K$-fold cross-validation was considered but not used for this project. First, three architecturally distinct models are trained; with $k = 5$, that requires 15 separate training runs, which is computationally prohibitive given the cost of fine-tuning ViT-B/16. In other words, the computational time required does not justify the incremental increase.
+Second, EuroSAT contains 27,000 images with 2,000-3,000 samples per class,
+a scale at which a single stratified split produces a test set of over 4,000 samples that is already statistically stable; the reduction in variance from $k$-fold is minimal at this dataset size.
 
-Per-channel mean and standard deviation are computed from the training split only and
-applied to normalise all three splits. Augmentations applied to the training split only
-include random horizontal and vertical flips, random rotation ($\pm 15^\circ$), and
-colour jitter (brightness and contrast $\pm 0.2$). These transformations are appropriate
-for top-down satellite imagery which has no canonical orientation. For ViT-B/16, images
-are resized from $64 \times 64$ to $224 \times 224$ to match the model's required
-input resolution. No augmentation is applied to validation or test splits.
+Per-channel mean and standard deviation are computed from the training split only and applied to normalize all three splits. Augmentations applied to the training split only include random horizontal and vertical flips, random rotation ($\pm 15^\circ$), and colour jitter (brightness and contrast $\pm 0.2$). These transformations are appropriate for top-down satellite imagery which has no canonical orientation. For ViT-B/16, images are resized from $64 \times 64$ to $224 \times 224$ to match the model's required input resolution. No augmentation is applied to validation or test splits.
 
 \subsection{Neural Network Architectures}
 
@@ -464,8 +368,7 @@ The model contains approximately 2.1M parameters and accepts $64 \times 64$ RGB 
 \subsubsection{ResNet50 with Transfer Learning}
 
 ResNet50 \cite{he2016resnet} is a 50-layer residual network pre-trained on ImageNet.
-The final fully connected layer --- originally configured for 1,000 ImageNet categories
---- is replaced with a new classification head for 10 EuroSAT classes:
+The final fully connected layer, originally configured for 1,000 ImageNet categories, is replaced with a new classification head for 10 EuroSAT classes:
 \[
     \text{Linear}(2048 \to 256) \;\rightarrow\; \text{ReLU} \;\rightarrow\;
     \text{Dropout}(p{=}0.3) \;\rightarrow\; \text{Linear}(256 \to 10)
@@ -476,10 +379,7 @@ The full model contains approximately 25.6M parameters.
 
 ViT-B/16 \cite{dosovitskiy2021vit} divides each $224 \times 224$ input into
 $N = (224/16)^2 = 196$ patches of $16 \times 16$ pixels, projected into a
-$D = 768$-dimensional embedding. The model uses $L = 12$ Transformer encoder layers
-with 12 attention heads. The pre-trained classification head is replaced with a linear
-layer mapping the 768-dimensional class token to 10 outputs. The full model contains
-approximately 86.6M parameters.
+$D = 768$-dimensional embedding. The model uses $L = 12$ Transformer encoder layers with 12 attention heads. The pre-trained classification head is replaced with a linear layer mapping the 768-dimensional class token to 10 outputs. The full model contains approximately 86.6M parameters.
 
 \begin{table}[h!]
     \centering
@@ -499,14 +399,15 @@ approximately 86.6M parameters.
 
 \subsection{Training Process}
 
-All models are implemented in PyTorch \cite{pytorch} using the \texttt{timm} library
-\cite{timm} for pre-trained checkpoints and trained on a GPU-accelerated environment.
+All models are implemented in PyTorch \cite{pytorch} using the \texttt{timm} library \cite{timm} for pre-trained checkpoints and trained on a GPU-accelerated environment.
+The full source code for this project is publicly available on GitHub \cite{github2026}:
+\begin{center}
+    \url{https://github.com/tranhouse/SYSC5108}
+\end{center}
 
 \subsubsection{Optimiser and Loss}
 
-All models use AdamW \cite{loshchilov2019decoupled} with cross-entropy loss. AdamW
-decouples weight decay from the adaptive learning rate, which gives more effective L2
-regularisation than standard Adam. Training parameters are listed in
+All models use AdamW \cite{loshchilov2019decoupled} with cross-entropy loss. AdamW decouples weight decay from the adaptive learning rate, which gives more effective L2 regularization than standard Adam. Training parameters are listed in
 Table~\ref{tab:hyperparams}.
 
 \begin{table}[h!]
@@ -533,18 +434,12 @@ Table~\ref{tab:hyperparams}.
 \subsubsection{Two-Phase Fine-Tuning for ResNet50}
 
 Phase 1 (5 epochs): the backbone is frozen and only the new classification head is
-trained. This prevents large gradient signals from the randomly initialised head from
-corrupting pre-trained backbone weights before the head has stabilised. Phase 2
-(15 epochs): all layers are unfrozen and fine-tuned end-to-end at $1 \times 10^{-5}$
-(one-tenth the Phase 1 rate), making careful adjustments to backbone features rather
-than overwriting them.
+trained. This prevents large gradient signals from the randomly initialized head from corrupting pre-trained backbone weights before the head has stabilized. Phase 2 (15 epochs): all layers are unfrozen and fine-tuned end-to-end at $1 \times 10^{-5}$ (one-tenth the Phase 1 rate), making careful adjustments to backbone features rather than overwriting them.
 
 \subsubsection{Checkpointing}
 
 At each epoch, if validation accuracy improves, model weights are saved to disk.
-After training, the best-checkpoint weights are restored for final test evaluation,
-so the evaluated model is the one that generalised best to the validation set
-rather than the potentially overfitted final-epoch model.
+After training, the best-checkpoint weights are restored for final test evaluation, so the evaluated model is the one that generalized best to the validation set rather than the potentially overfitted final-epoch model.
 
 The training and testing pseudocode are given in Algorithms~\ref{alg:train}
 and~\ref{alg:test}.
@@ -605,7 +500,7 @@ No augmentation is applied during testing.
 
 \subsection{Performance Metrics}
 
-Table~\ref{tab:results} summarises test set performance across all three models.
+Table~\ref{tab:results} summarizes test set performance across all three models.
 ViT-B/16 achieves the highest overall accuracy and macro F1, outperforming both
 convolutional baselines. Transfer learning produces a clear improvement over
 training from scratch: ResNet50 improves on the Baseline CNN by 4.25 percentage points
@@ -647,11 +542,7 @@ bias toward false positives or false negatives at the macro level.
     \end{tabular}
 \end{table}
 
-Table~\ref{tab:perclass} shows per-class F1 scores for all three models. The weakest
-classes are consistent across all models: Permanent Crop and River for the Baseline CNN,
-and Permanent Crop and Pasture for the two transfer learning models. Forest, Industrial,
-and Residential are the strongest classes across all models, reflecting their visually
-distinctive signatures at the $64 \times 64$ resolution.
+Table~\ref{tab:perclass} shows per-class F1 scores for all three models. The weakest classes are consistent across all models: Permanent Crop and River for the Baseline CNN, and Permanent Crop and Pasture for the two transfer learning models. Forest, Industrial, and Residential are the strongest classes across all models, reflecting their visually distinctive signatures at the $64 \times 64$ resolution.
 
 \begin{table}[h!]
     \centering
@@ -719,21 +610,21 @@ between specific class pairs.
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.85\textwidth]{BaselineCNN_confusion_matrix.png}
-    \caption{Normalised confusion matrix for the Baseline CNN (93.26\%).}
+    \caption{Normalized confusion matrix for the Baseline CNN (93.26\%).}
     \label{fig:cm_cnn}
 \end{figure}
 
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.85\textwidth]{ResNet50_confusion_matrix.png}
-    \caption{Normalised confusion matrix for ResNet50 (97.51\%).}
+    \caption{Normalized confusion matrix for ResNet50 (97.51\%).}
     \label{fig:cm_resnet}
 \end{figure}
 
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.85\textwidth]{ViT-B16_confusion_matrix.png}
-    \caption{Normalised confusion matrix for ViT-B/16 (98.77\%).}
+    \caption{Normalized confusion matrix for ViT-B/16 (98.77\%).}
     \label{fig:cm_vit}
 \end{figure}
 
@@ -786,7 +677,7 @@ models in a single bar chart for direct visual comparison.
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.85\textwidth]{model_comparison.png}
-    \caption{Model comparison --- test accuracy and macro F1 on the EuroSAT test set.}
+    \caption{Model comparison - test accuracy and macro F1 on the EuroSAT test set.}
     \label{fig:comparison}
 \end{figure}
 
@@ -796,78 +687,35 @@ models in a single bar chart for direct visual comparison.
 
 The Baseline CNN curves (Figure~\ref{fig:curves_cnn}) show training and validation
 accuracy tracking closely throughout all 20 epochs, reaching a final validation
-accuracy of approximately 93\%. The small gap between training and validation curves
-indicates that the model generalises well given its limited capacity, but also that
-it has reached its performance ceiling --- additional epochs would yield diminishing
-returns without architectural changes or more data.
+accuracy of approximately 93\%. The small gap between training and validation curves indicates that the model generalizes well given its limited capacity, but also that it has reached its performance ceiling. Additional epochs would yield diminishing returns without architectural changes or more data.
 
 The ResNet50 curves (Figure~\ref{fig:curves_resnet}) display the characteristic
-two-phase behaviour of the fine-tuning strategy. During Phase 1 (epochs 1--5, left
-of the dashed boundary line), validation accuracy rises from approximately 75\% to
-83\% as the classification head is trained against a frozen backbone that immediately
-provides rich pre-trained feature representations. At epoch 5, when the backbone is
-unfrozen and the lower learning rate is applied for Phase 2, a sharp improvement
-occurs and validation accuracy climbs steadily to approximately 97\% by epoch 20.
-Training and validation curves remain closely aligned throughout, indicating effective
-generalisation.
+two-phase behaviour of the fine-tuning strategy. During Phase 1 (epochs 1--5, left of the dashed boundary line), validation accuracy rises from approximately 75\% to 83\% as the classification head is trained against a frozen backbone that immediately provides rich pre-trained feature representations. At epoch 5, when the backbone is unfrozen and the lower learning rate is applied for Phase 2, a sharp improvement occurs and validation accuracy climbs steadily to approximately 97\% by epoch 20.
+Training and validation curves remain closely aligned throughout, indicating effective generalization.
 
-The ViT-B/16 curves (Figure~\ref{fig:curves_vit}) show a different pattern. Training
-loss descends steeply and approaches near-zero by the final epochs, while validation
-loss decreases more slowly and with more oscillation. This growing gap between training
-and validation loss in the later epochs indicates mild overfitting. Nevertheless, the
-validation accuracy stabilises around 98--99\%, showing strong generalisation to
-unseen data despite the training/validation loss gap.
+The ViT-B/16 curves (Figure~\ref{fig:curves_vit}) show a different pattern. Training loss descends steeply and approaches near-zero by the final epochs, while validation loss decreases more slowly and with more oscillation. This growing gap between training and validation loss in the later epochs indicates mild overfitting. Nevertheless, the validation accuracy stabilizes around 98--99\%, showing strong generalization to unseen data despite the training/validation loss gap.
 
 \subsubsection{Confusion Matrix Analysis}
 
-The confusion matrices reveal several consistent patterns across all models. Forest,
-Industrial, Sea/Lake, and Residential are the easiest classes to classify, with
-recall values at or above 0.98 across all three models. These classes have visually
-distinctive signatures at $64 \times 64$ resolution --- Forest has dense uniform
-green canopy, Sea/Lake has open water with characteristic spectral properties,
-Industrial and Residential have distinct structural textures --- that even the
-Baseline CNN can identify reliably.
+The confusion matrices reveal several consistent patterns across all models. Forest, Industrial, Sea/Lake, and Residential are the easiest classes to classify, with recall values at or above 0.98 across all three models. These classes have visually distinctive signatures at $64 \times 64$ resolution. Forest has dense uniform green canopy, Sea/Lake has open water with characteristic spectral properties, Industrial and Residential have distinct structural textures that even the Baseline CNN can identify reliably.
 
 The vegetation-type classes present the greatest difficulty across all models.
-Permanent Crop achieves the lowest F1 score in both the Baseline CNN (0.8736) and
-ResNet50 (0.9441), and is the second-lowest in ViT-B/16 (0.9665). The confusion
-table confirms this, with Permanent Crop being confused with Herbaceous Vegetation
-(43 times), Annual Crop (32 times), and vice versa. At the $64 \times 64$ resolution
-and in the RGB colour space, these classes share similar ground cover appearance ---
-green, textured surfaces without distinctive structural features --- and their
-distinguishing characteristics (crop row spacing, canopy structure) are difficult to
-resolve at this scale.
+Permanent Crop achieves the lowest F1 score in both the Baseline CNN (0.8736) and ResNet50 (0.9441), and is the second-lowest in ViT-B/16 (0.9665). The confusion table confirms this, with Permanent Crop being confused with Herbaceous Vegetation (43 times), Annual Crop (32 times), and vice versa. The assumption is that at the $64 \times 64$ resolution and in the RGB colour space, these classes share similar ground cover appearance, such that they are green, textured surfaces without distinctive structural features, and their distinguishing characteristics (crop row spacing, canopy structure) are difficult to resolve at this scale.
 
 The River-to-Highway confusion (39 occurrences) is the most notable unexpected error.
-At $64 \times 64$ resolution, narrow rivers and roads can appear as similar linear
-features with comparable widths, especially when water is darker or the image is
-captured under varying illumination. This confusion is largely resolved by
-ResNet50 and ViT-B/16, whose pre-trained features appear to encode contextual cues
-(surrounding vegetation patterns, surface texture) that distinguish water bodies
-from paved surfaces.
+Again, at $64 \times 64$ resolution, a possibly rationale would be that narrow rivers and roads can appear as similar linear features with comparable widths, especially when water is darker or the image is captured under varying illumination. However, this confusion is largely resolved by ResNet50 and ViT-B/16, whose pre-trained features appear to encode contextual cues (surrounding vegetation patterns, surface texture) that distinguish water bodies from paved surfaces.
 
-Pasture is consistently confused with Herbaceous Vegetation and Annual Crop, which
-is expected as all three classes represent open green areas at different stages of
-agricultural use. The distinction between managed pasture and herbaceous vegetation
-is subtle even to human observers in small patches.
+Pasture is consistently confused with Herbaceous Vegetation and Annual Crop, which is expected as all three classes represent open green areas at different stages of agricultural use. The distinction between managed pasture and herbaceous vegetation is subtle even to human observers in small patches.
 
 \subsubsection{Impact of Transfer Learning}
 
-The 4.25 percentage point accuracy improvement from Baseline CNN (93.26\%) to ResNet50
-(97.51\%) measures the value of ImageNet pre-training on this domain-shifted
-dataset. The improvement is especially pronounced for classes that were weak in the
-Baseline CNN --- River improves from F1 0.8776 to 0.9800 and Highway from 0.9052 to
-0.9813 --- suggesting that pre-trained features encode texture and structural
-information that is difficult to learn from 18,900 satellite patches alone.
+The 4.25 percentage point accuracy improvement from Baseline CNN (93.26\%) to ResNet50 (97.51\%) measures the value of ImageNet pre-training on this domain-shifted dataset. The improvement is especially pronounced for classes that were weak in the Baseline CNN; River improves from F1 0.8776 to 0.9800 and Highway from 0.9052 to 0.9813. This suggests that pre-trained features encode texture and structural information that is difficult to learn from 18,900 satellite patches alone.
 
 \subsubsection{CNN vs.\ Transformer}
 
 ViT-B/16 outperforms ResNet50 by 1.26 percentage points (98.77\% vs.\ 97.51\%),
 showing that global attention-based reasoning offers an improvement over local
-convolutional feature extraction for satellite scene classification. The improvement
-is distributed across nearly all classes, with the most notable gains in Permanent
-Crop (+2.24 F1 points) and Pasture (+3.12 F1 points) --- precisely the vegetation
-classes where spatial layout context is most useful for disambiguation.
+convolutional feature extraction for satellite scene classification. The improvement is distributed across nearly all classes, with the most notable gains in Permanent Crop (+2.24 F1 points) and Pasture (+3.12 F1 points) --- precisely the vegetation classes where spatial layout context is most useful for disambiguation.
 
 \subsection{Comparison with Related Results}
 
@@ -892,44 +740,20 @@ Table~\ref{tab:related} compares results against published benchmarks.
     \end{tabular}
 \end{table}
 
-The ResNet50 result of 97.51\% falls 1.06 points below the 98.57\% benchmark reported
-by Helber et al.\ \cite{helber2019eurosat}. This gap is attributable to differences
-in training duration, augmentation strategy, and the absence of test-time augmentation
-in this implementation. Notably, ViT-B/16 at 98.77\% exceeds the original EuroSAT
-ResNet50 benchmark, establishing a new reference result on this dataset using the same
-public split methodology.
+The ResNet50 result of 97.51\% falls 1.06 points below the 98.57\% benchmark reported by Helber et al.\ \cite{helber2019eurosat}. This gap is attributable to differences in training duration, augmentation strategy, and the absence of test-time augmentation in this implementation. Notably, ViT-B/16 at 98.77\% exceeds the original EuroSAT ResNet50 benchmark, establishing a new reference result on this dataset using the same public split methodology.
 
 % ════════════════════════════════════════════════════════════════════════════
 \section*{Conclusion}
 \addcontentsline{toc}{section}{Conclusion}
 
-This report trained and compared three deep learning models --- a Baseline CNN,
-ResNet50 with two-phase transfer learning, and ViT-B/16 with transfer learning ---
-for LULC classification on the EuroSAT satellite imagery dataset, motivated by
-ghost gear detection work at DFO.
+Transfer learning made a clear difference on this dataset. ResNet50, starting from ImageNet weights, reached 97.51\% accuracy compared to 93.26\% for the Baseline CNN trained entirely on EuroSAT. The gap is largest for classes like River and Highway, where the Baseline CNN struggled most, suggesting that pre-trained features capture texture and structural cues that 18,900 satellite patches alone are not enough to learn reliably.
 
-The experiments produced three clear findings. First, transfer learning provides a
-substantial benefit on this domain-shifted dataset: ResNet50's 97.51\% accuracy
-represents a 4.25 point improvement over the 93.26\% Baseline CNN trained from
-scratch on EuroSAT alone, showing that ImageNet pre-trained features generalise
-effectively to satellite imagery. Second, the ViT-B/16 Transformer architecture
-outperforms the convolutional ResNet50 by 1.26 points, achieving 98.77\% and
-exceeding the original EuroSAT benchmark of 98.57\%. This result supports the view
-that global attention-based reasoning offers advantages for satellite scene
-classification, where class identity often depends on spatial layout rather than
-local texture. Third, the most persistent misclassification errors involve
-vegetation-type classes --- particularly Permanent Crop, Herbaceous Vegetation, and
-Pasture --- whose distinguishing characteristics are difficult to resolve at the
-$64 \times 64$ RGB resolution used in this study.
+ViT-B/16 pushed accuracy further to 98.77\%, which is notable given that the original EuroSAT benchmark using ResNet50 stands at 98.57\%. The Transformer's global attention mechanism appears better suited to satellite scene classification than local convolution, particularly for vegetation classes like Permanent Crop and Pasture where the spatial arrangement of the scene matters as much as local texture.
 
-Future work could address these limitations in two directions. Within EuroSAT, the
-full 13-band multispectral variant includes near-infrared and shortwave-infrared
-bands with information relevant to distinguishing vegetation types
-and water bodies, and would likely reduce the vegetation class confusions identified
-here. More broadly, the pre-trained models and fine-tuning pipeline developed in
-this project apply to DFO's proprietary satellite data for ghost
-gear detection, where the trained feature extractors could be further adapted using
-a small amount of labelled operational imagery.
+The persistent weak point across all three models is the vegetation group (i.e., Permanent Crop, Herbaceous Vegetation, and Pasture) as they are visually similar at $64 \times 64$ pixels in RGB, and no model fully resolves the confusion between them. This points to a limitation of the data format rather than the models themselves. The 13-band multispectral EuroSAT variant includes near-infrared channels that carry vegetation-specific spectral information and would likely reduce these errors.
+
+From a DFO perspective, the pipeline developed here, pre-trained backbone,
+classification head replacement, two-phase fine-tuning, transfers directly to ghost gear imagery. A small set of labelled operational satellite images could be used to adapt these models without training from scratch, which is the practical path forward for applying this work within the department.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \newpage
@@ -985,12 +809,6 @@ Covariate Shift,''
 in \textit{Proceedings of the 32nd International Conference on Machine Learning
 (ICML)}, pp.\ 448--456, 2015.
 
-\bibitem{deng2009imagenet}
-J.\ Deng, W.\ Dong, R.\ Socher, L.-J.\ Li, K.\ Li, and L.\ Fei-Fei,
-``ImageNet: A Large-Scale Hierarchical Image Database,''
-in \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern
-Recognition (CVPR)}, pp.\ 248--255, 2009.
-
 \bibitem{loshchilov2019decoupled}
 I.\ Loshchilov and F.\ Hutter,
 ``Decoupled Weight Decay Regularization,''
@@ -1020,6 +838,12 @@ A.\ Paszke et al.,
 ``PyTorch: An Imperative Style, High-Performance Deep Learning Library,''
 in \textit{Advances in Neural Information Processing Systems (NeurIPS)},
 vol.\ 32, 2019.
+
+\bibitem{github2026}
+T.\ Tran,
+``SYSC5108 --- Land Use and Land Cover Classification from Satellite Imagery,''
+GitHub repository, 2026.
+[Online]. Available: \url{https://github.com/tranhouse/SYSC5108}
 
 \bibitem{timm}
 R.\ Wightman,
