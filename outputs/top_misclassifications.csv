@@ -1,0 +1,11 @@
+true_class,predicted_class,count
+PermanentCrop,HerbaceousVegetation,43
+River,Highway,39
+PermanentCrop,AnnualCrop,32
+HerbaceousVegetation,PermanentCrop,29
+Pasture,HerbaceousVegetation,23
+AnnualCrop,PermanentCrop,21
+Pasture,AnnualCrop,16
+PermanentCrop,Highway,12
+Residential,Industrial,12
+River,AnnualCrop,12

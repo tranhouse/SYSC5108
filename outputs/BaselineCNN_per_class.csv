@@ -1,0 +1,11 @@
+Class,Precision,Recall,F1,Support
+AnnualCrop,0.9091,0.9333,0.9211,450
+Forest,0.9696,0.9911,0.9802,450
+HerbaceousVegetation,0.9114,0.8891,0.9001,451
+Highway,0.8606,0.9547,0.9052,375
+Industrial,0.9535,0.9840,0.9685,375
+Pasture,0.9013,0.9433,0.9218,300
+PermanentCrop,0.9008,0.8480,0.8736,375
+Residential,0.9758,0.9844,0.9801,450
+River,0.9286,0.8320,0.8776,375
+SeaLake,0.9977,0.9511,0.9738,450
