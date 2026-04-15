@@ -292,6 +292,11 @@ outputs/
 |---|---|
 | `CUDA out of memory` | Reduce `BATCH_SIZE` to 16 in `config.py` |
 | Slow training on CPU | Reduce `NUM_EPOCHS` to 10 |
+
+## References
+
+
+
 | `timm` not found | `pip install timm` |
 | Windows `num_workers` error | Set `NUM_WORKERS = 0` in `config.py` |
 | Download fails | Download manually from https://zenodo.org/records/7711810 and extract to `./data/eurosat/` |
