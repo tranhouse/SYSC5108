@@ -283,7 +283,6 @@ outputs/
 ├── confusion_matrix_comparison.png
 └── model_comparison.png
 ```
-
 ---
 
 ## Troubleshooting
@@ -296,6 +295,7 @@ outputs/
 | Windows `num_workers` error | Set `NUM_WORKERS = 0` in `config.py` |
 | Download fails | Download manually from https://zenodo.org/records/7711810 and extract to `./data/eurosat/` |
 
+---
 
 ## References
 References outlined in the report are downloaded in the reference folder for review
